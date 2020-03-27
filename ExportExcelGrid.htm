@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>Kendo UI Snippet</title>
+
+    <link href="https://kendo.cdn.telerik.com/2020.1.114/styles/kendo.common.min.css" rel="stylesheet">
+    <link href="https://kendo.cdn.telerik.com/2020.1.114/styles/kendo.metro.min.css" rel="stylesheet">
+    <link href="https://kendo.cdn.telerik.com/2020.1.114/styles/kendo.metro.mobile.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+    <script src="https://kendo.cdn.telerik.com/2020.1.219/js/jszip.min.js"></script>
+    <script src="https://kendo.cdn.telerik.com/2020.1.219/js/kendo.all.min.js"></script>
+</head>
+<body>
+        <div><ul id="panels">
+        <div class="header">Click on "Export to Excel Button" to Generate Quaterly Beazley Report</div>
+      </ul>
+ </div>
+  <!--End of Panel-->
+        <button id="export" class="k-button"><span class="k-icon k-i-excel"></span>Export to Excel</button>
+         
+        <div id="tabstrip">  <!-- Created Tabstrip that will be load different views-->
+        <ul>
+          <li class="k-state-active" id="tab1">Pending</li>
+          <li id="tab2">Complex</li>
+          <li id="tab3">Portfolio</li>
+          <li id="tab4">Crime</li>
+        </ul>
+        <div><div id="grid"></div></div>
+        <div><div id="grid1"></div></div>
+        <div><div id="grid2"></div></div>
+        <div><div id="grid3"></div></div>
+        
+      </div>
+      <style>
+           #panels
+            {
+                margin-left: 20px;
+                text-align: center;
+                font-size: large;
+            }
+            .ms-core-pageTitle {
+    font-size: 2.77em;
+    white-space: nowrap;
+    display: none;
+}
+.ms-breadcrumb-top {
+    white-space: nowrap;
+    display: none;
+}
+.ms-webpartPage-root {
+    border-spacing: 2px; 
+}
+#contentRow {
+     padding-top: 1px; 
+}
+.ms-verticalAlignTop {
+    vertical-align: top;
+    display: none;
+}
+#s4-titlerow {
+    margin-bottom: 27px;
+     height: 0px; 
+}
+#s4-titlerow {
+    margin-top: 0px;
+    margin-bottom: 0px;
+     padding-top: 0px; 
+     padding-bottom: 0px; 
+}
+
+      </style>
+<script>
+  // used to sync the exports
+  var promises = [
+    $.Deferred(),
+    $.Deferred(),
+    $.Deferred(),
+    $.Deferred(),
+  ];
+
+  $("#export").click(function(e){
+    // trigger export of the products grid
+    $("#grid").data("kendoGrid").saveAsExcel();
+    // trigger export of the orders grid
+    $("#grid1").data("kendoGrid").saveAsExcel();
+    // trigger export for complex grid
+    $("#grid2").data("kendoGrid").saveAsExcel();
+    $("#grid3").data("kendoGrid").saveAsExcel();
+    // wait for both exports to finish
+
+    $.when.apply(null, promises)
+     .then(function(productsWorkbook, ordersWorkbook,contososWorkbook,northwindsWorkbook) {
+
+      // create a new workbook using the sheets of the products and orders workbooks
+      var sheets = [
+        productsWorkbook.sheets[0],
+        ordersWorkbook.sheets[0],
+        contososWorkbook.sheets[0],
+        northwindsWorkbook.sheets[0],
+      ];
+
+      sheets[0].title = "New Matter";
+      sheets[1].title = "Complex";
+      sheets[2].title ="Portfolio";
+      sheets[3].title="Crime";
+      var workbook = new kendo.ooxml.Workbook({
+        sheets: sheets
+      });
+
+      // save the new workbook,b
+      kendo.saveAs({
+        dataURI: workbook.toDataURL(),
+        fileName: "GenerateBeazleyReport.xlsx"
+      })
+    });
+  });
+
+$(document).ready(function() {  
+    var tabstrip = $("#tabstrip").kendoTabStrip().data("kendoTabStrip");
+    getGrid1();  
+    getGrid2();
+    getGrid3();
+    getGrid4();
+});  
+function getGrid1() { 
+$.ajax({ 
+   method: 'GET', 
+   url: "http://labsp16app:2101/Beazley/_api/web/lists/Getbytitle('BBList')/items?&$select=ID,Title,MatterDevelopments&$filter=SaveButtonClicked%20eq%20null&$top=1000", 
+   headers: { 
+       "accept": "application/json;odata=verbose",
+       "content-type": "application/json;odata=verbose",
+   },
+    success: mySuccHandler,
+   error: myErrHandler
+});
+
+function mySuccHandler(response) {
+console.log(response);
+
+try{
+ // tabstrip to kendo page.
+$("#grid").kendoGrid({
+dataSource: {
+   data: response.d.results,
+  
+   pageSize: 20,
+   
+
+schema:{
+   
+
+
+   model: {
+      id:"Title",
+       fields:{
+          
+          Title: {type:"string"},
+          MatterDescription: {type:"string"}
+          
+       }
+   }
+},
+},
+
+filterable:true,
+sortable: true,
+groupable: true,
+pageable: true,
+excelExport: function(e) {
+    e.preventDefault();
+
+    promises[0].resolve(e.workbook);
+  },
+batch:true,
+navigatable:true,
+selectable: true,
+columns : [
+    {
+     field: "ID",
+     title: "SharePoint ID",
+    // template: '<a href="\\#">#= ID#</a>'
+    template: '<a target="_blank" href="http://labsp16app:2101/beazley/Lists/BBList/EditForm.aspx?ID=#= ID#">Click here to Complete</a>'
+},
+    
+    
+    {
+    field: "Title",
+    title:"Matter",
+    
+    },
+
+{
+field:"MatterDevelopments",
+title:"Matter Descriptions",
+},
+],
+});
+
+
+}
+catch(e){
+alert(e.message);
+}
+
+}
+function myErrHandler(data, errMessage) {    
+alert("Error: " + errMessage);    
+}
+tabstrip.one("activate", function() {
+ grid.resize();
+  });
+}
+getGrid2();
+//next grid
+function getGrid2() { 
+    $.ajax({ 
+       method: 'GET', 
+       url: "http://labsp16app:2101/Beazley/_api/web/lists/Getbytitle('BBList')/items?&$select=ID,Title,MatterDevelopments&$filter=AssignmentType%20eq%20%27Complex%27&$top=1000", 
+       headers: { 
+           "accept": "application/json;odata=verbose",
+           "content-type": "application/json;odata=verbose",
+       },
+        success: mySuccHandler,
+       error: myErrHandler
+    });
+    
+    function mySuccHandler(response) {
+    console.log(response);
+    
+    try{
+     // tabstrip to kendo page.
+    $("#grid1").kendoGrid({
+    dataSource: {
+       data: response.d.results,
+      
+       pageSize: 20,
+       
+    
+    schema:{
+       
+    
+    
+       model: {
+          id:"Title",
+           fields:{
+              
+              Title: {type:"string"},
+              MatterDescription: {type:"string"}
+              
+           }
+       }
+    },
+    },
+    
+    filterable:true,
+    sortable: true,
+    groupable: true,
+    pageable: true,
+    excelExport: function(e) {
+        e.preventDefault();
+  
+        promises[1].resolve(e.workbook);
+      },
+    batch:true,
+    navigatable:true,
+    selectable: true,
+    columns : [
+        
+        
+        
+        {
+        field: "Title",
+        title:"Matter",
+        
+        },
+    
+    {
+    field:"MatterDevelopments",
+    title:"Matter Descriptions",
+    },
+    ],
+    });
+    
+    }
+    catch(e){
+    alert(e.message);
+    }
+    getGrid3();
+    }
+    function myErrHandler(data, errMessage) {    
+    alert("Error: " + errMessage);    
+    }
+    tabstrip.one("activate", function() {
+        grid1.resize();
+      });
+    }
+    //next grid
+    function getGrid3() { 
+    $.ajax({ 
+       method: 'GET', 
+       url: "http://labsp16app:2101/Beazley/_api/web/lists/Getbytitle('BBList')/items?&$select=ID,Title,MatterDevelopments&$filter=AssignmentType%20eq%20%27Portfolio%27&$top=1000", 
+       headers: { 
+           "accept": "application/json;odata=verbose",
+           "content-type": "application/json;odata=verbose",
+       },
+        success: mySuccHandler,
+       error: myErrHandler
+    });
+    
+    function mySuccHandler(response) {
+    console.log(response);
+    
+    try{
+     // tabstrip to kendo page.
+    $("#grid2").kendoGrid({
+    dataSource: {
+       data: response.d.results,
+      
+       pageSize: 20,
+       
+    
+    schema:{
+       
+    
+    
+       model: {
+          id:"Title",
+           fields:{
+              
+              Title: {type:"string"},
+              MatterDescription: {type:"string"}
+              
+           }
+       }
+    },
+    },
+    
+    filterable:true,
+    sortable: true,
+    groupable: true,
+    pageable: true,
+    excelExport: function(e) {
+        e.preventDefault();
+  
+        promises[2].resolve(e.workbook);
+      },
+    batch:true,
+    navigatable:true,
+    selectable: true,
+    columns : [
+        
+        
+        
+        {
+        field: "Title",
+        title:"Matter",
+        
+        },
+    
+    {
+    field:"MatterDevelopments",
+    title:"Matter Descriptions",
+    },
+    ],
+    });
+    
+    }
+    catch(e){
+    alert(e.message);
+    }
+    getGrid4();
+    }
+    function myErrHandler(data, errMessage) {    
+    alert("Error: " + errMessage);    
+    }
+    tabstrip.one("activate", function() {
+        grid2.resize();
+      });
+    }
+    // next grid4
+    function getGrid4() { 
+    $.ajax({ 
+       method: 'GET', 
+       url: "http://labsp16app:2101/Beazley/_api/web/lists/Getbytitle('BBList')/items?&$select=ID,Title,MatterDevelopments&$filter=AssignmentType%20eq%20%27Crime%27&$top=1000", 
+       headers: { 
+           "accept": "application/json;odata=verbose",
+           "content-type": "application/json;odata=verbose",
+       },
+        success: mySuccHandler,
+       error: myErrHandler
+    });
+    
+    function mySuccHandler(response) {
+    console.log(response);
+    
+    try{
+     // tabstrip to kendo page.
+    $("#grid3").kendoGrid({
+    dataSource: {
+       data: response.d.results,
+      
+       pageSize: 20,
+       
+    
+    schema:{
+       
+    
+    
+       model: {
+          id:"Title",
+           fields:{
+              
+              Title: {type:"string"},
+              MatterDescription: {type:"string"}
+              
+           }
+       }
+    },
+    },
+    
+    filterable:true,
+    sortable: true,
+    groupable: true,
+    pageable: true,
+    excelExport: function(e) {
+        e.preventDefault();
+  
+        promises[3].resolve(e.workbook);
+      },
+    batch:true,
+    navigatable:true,
+    selectable: true,
+    columns : [
+        
+        
+        
+        {
+        field: "Title",
+        title:"Matter",
+        
+        },
+    
+    {
+    field:"MatterDevelopments",
+    title:"Matter Descriptions",
+    },
+    ],
+    });
+    
+    }
+    catch(e){
+    alert(e.message);
+    }
+    
+    }
+    function myErrHandler(data, errMessage) {    
+    alert("Error: " + errMessage);    
+    }
+    tabstrip.one("activate", function() {
+        grid3.resize();
+      });
+    }
+</script>
+</body>
+</html>
